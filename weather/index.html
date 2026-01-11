@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>云端天气看板</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --danger: #ff7e5f;
+            --text-main: #2d3436;
+            /* DPI 适配：根据屏幕宽度自动调整基础字号 */
+            font-size: clamp(14px, 1.8vw, 18px);
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* 搜索框适配各种屏幕宽度 */
+        .search-area {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--primary); }
+        button {
+            padding: 0 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* 天气卡片样式 */
+        .weather-main {
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .city-name { font-size: 1.5rem; color: #636e72; margin: 0; }
+        .temp-display { font-size: 4rem; font-weight: 800; color: var(--text-main); margin: 0.5rem 0; }
+        
+        /* 列表项自适应排列 */
+        .forecast-box {
+            background: white;
+            border-radius: 24px;
+            padding: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .item {
+            display: grid;
+            grid-template-columns: 2.5rem 3rem 1fr 5rem 4rem;
+            align-items: center;
+            padding: 1rem 0.5rem;
+            border-bottom: 1px solid #f1f1f1;
+            font-size: 0.95rem;
+        }
+        .item:last-child { border: none; }
+        .high-low { text-align: center; font-weight: 600; white-space: nowrap; }
+
+        /* 针对小屏幕 DPI 的优化 */
+        @media (max-width: 400px) {
+            .item { grid-template-columns: 2rem 2.5rem 1fr 4.5rem; }
+            .wind { display: none; } /* 屏幕过窄时隐藏风向 */
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="search-area">
+        <input type="text" id="cityInput" placeholder="输入代码 (如 101301405)" value="101301405">
+        <button onclick="getWeather()">查询</button>
+    </div>
+
+    <div id="loading" style="display:none; text-align:center;">数据同步中...</div>
+
+    <div id="content">
+        <div class="weather-main">
+            <p class="city-name" id="cityName">--</p>
+            <div class="temp-display" id="nowTemp">--°</div>
+            <p id="weatherInfo">--</p>
+        </div>
+
+        <div class="forecast-box" id="list">
+            </div>
+    </div>
+</div>
+
+<script>
+    // 请在此处替换为您自己的 Cloudflare Workers 地址
+    const WORKER_URL = 'https://weather.concepcionsherrill.workers.dev'; 
+
+    function clean(str) {
+        return str.replace(/[高温低温\s]/g, '');
+    }
+
+    async function getWeather() {
+        const code = document.getElementById('cityInput').value;
+        const load = document.getElementById('loading');
+        load.style.display = 'block';
+
+        try {
+            const response = await fetch(`${WORKER_URL}/${code}`);
+            const res = await response.json();
+
+            if (res.status === 200) {
+                const data = res.data;
+                document.getElementById('cityName').innerText = res.cityInfo.city;
+                document.getElementById('nowTemp').innerText = data.wendu;
+                document.getElementById('weatherInfo').innerText = `${data.forecast[0].type} | 湿度 ${data.shidu}`;
+
+                const list = document.getElementById('list');
+                list.innerHTML = '';
+                data.forecast.forEach((day, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'item';
+                    row.innerHTML = `
+                        <span style="color:#636e72">${day.date}</span>
+                        <span>${day.week}</span>
+                        <span style="color:var(--primary); font-weight:bold">${day.type}</span>
+                        <span class="high-low">
+                            <span style="color:var(--danger)">${clean(day.high)}</span>
+                            <span style="color:#ccc; font-weight:normal">/</span>
+                            <span style="color:var(--primary)">${clean(day.low)}</span>
+                        </span>
+                        <span class="wind" style="color:#b2bec3; font-size:0.8rem; text-align:right">${day.fx}</span>
+                    `;
+                    list.appendChild(row);
+                });
+            } else {
+                alert("无效的代码: " + res.message);
+            }
+        } catch (err) {
+            alert("Worker 代理连接失败，请检查 URL");
+        } finally {
+            load.style.display = 'none';
+        }
+    }
+
+    // 初次加载
+    getWeather();
+</script>
+
+</body>
+</html>
