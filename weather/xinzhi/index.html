@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态天气 - 防城港</title>
+    <style>
+        :root {
+            --bg-color: #4facfe;
+            --card-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            margin: 0;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* 背景渐变过渡动画 */
+            transition: background 1s ease;
+            background: var(--bg-color);
+        }
+
+        .weather-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            text-align: center;
+            width: 320px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 25px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #555; }
+
+        .city { font-size: 28px; font-weight: bold; margin: 10px 0; color: #333; }
+        .temp { font-size: 64px; font-weight: 800; color: #222; margin: 5px 0; }
+        .info { font-size: 20px; color: #666; margin-bottom: 20px; }
+        .update-time { font-size: 12px; color: #999; }
+
+        /* 不同天气的背景主题 */
+        .theme-sunny { background: linear-gradient(120deg, #f6d365 0%, #fda085 100%); }
+        .theme-cloudy { background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%); }
+        .theme-rain { background: linear-gradient(120deg, #616161 0%, #9bc5c3 100%); }
+        .theme-default { background: linear-gradient(to top, #4facfe 0%, #00f2fe 100%); }
+    </style>
+</head>
+<body id="body" class="theme-default">
+
+<div class="weather-card">
+    <div class="search-box">
+        <input type="text" id="cityInput" placeholder="输入城市名 (如: 南宁)">
+        <button onclick="changeCity()">搜索</button>
+    </div>
+
+    <div id="city" class="city">防城港</div>
+    <div id="temp" class="temp">--°</div>
+    <div id="text" class="info">加载中...</div>
+    <div id="update" class="update-time">最后更新: --</div>
+</div>
+
+<script>
+    // --- 配置区域 ---
+    const PRIVATE_KEY = 'SCwTstrVT1Y5yfS7F'; // 请在此处填入你的心知天气私钥
+    const DEFAULT_CITY = 'fangchenggang'; // 默认设置为防城港
+
+    // 监听回车键
+    document.getElementById('cityInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') changeCity();
+    });
+
+    function changeCity() {
+        const val = document.getElementById('cityInput').value;
+        if (val) fetchWeather(val);
+    }
+
+    async function fetchWeather(location) {
+        // 使用公有参数 key (即私钥) 进行普通请求
+        const url = `https://api.seniverse.com/v3/weather/now.json?key=${PRIVATE_KEY}&location=${encodeURIComponent(location)}&language=zh-Hans&unit=c`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.results) {
+                const now = data.results[0].now;
+                const loc = data.results[0].location;
+                
+                // 更新文字信息
+                document.getElementById('city').innerText = loc.name;
+                document.getElementById('temp').innerText = now.temperature + '°';
+                document.getElementById('text').innerText = now.text;
+                document.getElementById('update').innerText = '最后更新: ' + new Date(data.results[0].last_update).toLocaleTimeString();
+
+                // 切换背景主题
+                updateTheme(now.text);
+            } else {
+                alert("无法找到该城市，请重试");
+            }
+        } catch (err) {
+            console.error("请求失败:", err);
+            alert("API 请求异常，请检查私钥是否正确");
+        }
+    }
+
+    function updateTheme(weatherText) {
+        const body = document.getElementById('body');
+        body.className = ''; // 清除旧状态
+
+        if (weatherText.includes('晴')) {
+            body.classList.add('theme-sunny');
+        } else if (weatherText.includes('云') || weatherText.includes('阴')) {
+            body.classList.add('theme-cloudy');
+        } else if (weatherText.includes('雨')) {
+            body.classList.add('theme-rain');
+        } else {
+            body.classList.add('theme-default');
+        }
+    }
+
+    // 初始化加载
+    fetchWeather(DEFAULT_CITY);
+</script>
+
+</body>
+</html>
