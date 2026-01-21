@@ -2,170 +2,184 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>云端天气看板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心知天气</title>
     <style>
         :root {
-            --primary: #4a90e2;
-            --danger: #ff7e5f;
-            --text-main: #2d3436;
-            /* DPI 适配：根据屏幕宽度自动调整基础字号 */
-            font-size: clamp(14px, 1.8vw, 18px);
+            --bg-color: #4facfe;
+            --card-bg: rgba(255, 255, 255, 0.95);
         }
 
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #f0f2f5;
             margin: 0;
-            padding: 20px;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
+            align-items: center;
+            transition: background 1s ease;
+            background: var(--bg-color);
         }
 
-        .container {
-            width: 100%;
-            max-width: 500px;
+        .weather-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 350px;
+            backdrop-filter: blur(15px);
         }
 
-        /* 搜索框适配各种屏幕宽度 */
-        .search-area {
+        /* 搜索框 */
+        .search-box {
             display: flex;
-            gap: 8px;
-            margin-bottom: 1.5rem;
+            background: #f0f0f0;
+            padding: 5px;
+            border-radius: 15px;
+            margin-bottom: 20px;
         }
         input {
             flex: 1;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            font-size: 1rem;
+            padding: 10px;
+            border: none;
+            background: transparent;
             outline: none;
-            transition: border-color 0.3s;
+            font-size: 16px;
         }
-        input:focus { border-color: var(--primary); }
         button {
-            padding: 0 20px;
-            background: var(--primary);
+            padding: 10px 18px;
+            background: #333;
             color: white;
             border: none;
             border-radius: 12px;
-            font-weight: bold;
             cursor: pointer;
         }
 
-        /* 天气卡片样式 */
-        .weather-main {
-            background: white;
-            border-radius: 24px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .city-name { font-size: 1.5rem; color: #636e72; margin: 0; }
-        .temp-display { font-size: 4rem; font-weight: 800; color: var(--text-main); margin: 0.5rem 0; }
-        
-        /* 列表项自适应排列 */
-        .forecast-box {
-            background: white;
-            border-radius: 24px;
-            padding: 1rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        .item {
-            display: grid;
-            grid-template-columns: 2.5rem 3rem 1fr 5rem 4rem;
-            align-items: center;
-            padding: 1rem 0.5rem;
-            border-bottom: 1px solid #f1f1f1;
-            font-size: 0.95rem;
-        }
-        .item:last-child { border: none; }
-        .high-low { text-align: center; font-weight: 600; white-space: nowrap; }
+        /* 主显示区 */
+        .city { font-size: 24px; font-weight: bold; color: #333; }
+        .main-emoji { font-size: 80px; margin: 10px 0; display: block; }
+        .temp-main { font-size: 64px; font-weight: 800; color: #222; margin: 0; }
+        .info-main { font-size: 18px; color: #666; margin-bottom: 20px; }
 
-        /* 针对小屏幕 DPI 的优化 */
-        @media (max-width: 400px) {
-            .item { grid-template-columns: 2rem 2.5rem 1fr 4.5rem; }
-            .wind { display: none; } /* 屏幕过窄时隐藏风向 */
+        /* 预报区域 */
+        .forecast-container {
+            border-top: 1px solid rgba(0,0,0,0.08);
+            padding-top: 10px;
         }
+        .forecast-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 15px;
+        }
+        .f-date { width: 50px; text-align: left; font-weight: 600; }
+        .f-info { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .f-emoji { font-size: 20px; }
+        .f-temp { width: 85px; text-align: right; color: #444; font-weight: bold; }
+
+        /* 背景主题 */
+        .theme-sunny { background: linear-gradient(135deg, #FFD166 0%, #F7873F 100%); }
+        .theme-cloudy { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); }
+        .theme-rain { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .theme-default { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
     </style>
 </head>
-<body>
+<body id="body">
 
-<div class="container">
-    <div class="search-area">
-        <input type="text" id="cityInput" placeholder="输入代码 (如 101301405)" value="101301405">
-        <button onclick="getWeather()">查询</button>
+<div class="weather-card">
+    <div class="search-box">
+        <input type="text" id="cityInput" placeholder="搜索城市...">
+        <button onclick="changeCity()">搜索</button>
     </div>
 
-    <div id="loading" style="display:none; text-align:center;">数据同步中...</div>
+    <div id="city" class="city">防城港</div>
+    <span id="mainEmoji" class="main-emoji">☀️</span>
+    <div id="temp" class="temp-main">--°</div>
+    <div id="text" class="info-main">加载中...</div>
 
-    <div id="content">
-        <div class="weather-main">
-            <p class="city-name" id="cityName">--</p>
-            <div class="temp-display" id="nowTemp">--°</div>
-            <p id="weatherInfo">--</p>
-        </div>
-
-        <div class="forecast-box" id="list">
-            </div>
-    </div>
+    <div class="forecast-container" id="forecast"></div>
 </div>
 
 <script>
-    // 请在此处替换为您自己的 Cloudflare Workers 地址
-    const WORKER_URL = 'https://weather.concepcionsherrill.workers.dev'; 
+    const API_KEY = 'SCwTstrVT1Y5yfS7F'; // 请填入你的心知天气私钥
+    const DEFAULT_CITY = 'fangchenggang';
 
-    function clean(str) {
-        return str.replace(/[高温低温\s]/g, '');
+    // 天气代码到 Emoji 的映射表
+    const emojiMap = {
+        "0": "☀️", "1": "☀️", "2": "☀️", "3": "☀️",          // 晴
+        "4": "⛅", "5": "⛅", "6": "⛅", "7": "☁️", "8": "☁️", "9": "☁️", // 多云/阴
+        "10": "🌧️", "11": "⛈️", "13": "🌧️", "14": "🌧️", "15": "🌧️",    // 雨
+        "20": "❄️", "21": "❄️", "22": "❄️",                      // 雪
+        "30": "🌫️", "31": "🌫️",                               // 雾/霾
+        "default": "🌈"
+    };
+
+    function getEmoji(code) {
+        // 根据 code 前几位大致分类或直接匹配
+        if (emojiMap[code]) return emojiMap[code];
+        if (code >= 10 && code <= 19) return "🌧️";
+        if (code >= 20 && code <= 25) return "❄️";
+        return emojiMap["default"];
     }
 
-    async function getWeather() {
-        const code = document.getElementById('cityInput').value;
-        const load = document.getElementById('loading');
-        load.style.display = 'block';
+    async function fetchWeather(location) {
+        const nowUrl = `https://api.seniverse.com/v3/weather/now.json?key=${API_KEY}&location=${encodeURIComponent(location)}&language=zh-Hans&unit=c`;
+        const dailyUrl = `https://api.seniverse.com/v3/weather/daily.json?key=${API_KEY}&location=${encodeURIComponent(location)}&language=zh-Hans&unit=c&start=0&days=3`;
 
         try {
-            const response = await fetch(`${WORKER_URL}/${code}`);
-            const res = await response.json();
+            const [nowRes, dailyRes] = await Promise.all([fetch(nowUrl), fetch(dailyUrl)]);
+            const nowData = await nowRes.json();
+            const dailyData = await dailyRes.json();
 
-            if (res.status === 200) {
-                const data = res.data;
-                document.getElementById('cityName').innerText = res.cityInfo.city;
-                document.getElementById('nowTemp').innerText = data.wendu;
-                document.getElementById('weatherInfo').innerText = `${data.forecast[0].type} | 湿度 ${data.shidu}`;
-
-                const list = document.getElementById('list');
-                list.innerHTML = '';
-                data.forecast.forEach((day, i) => {
-                    const row = document.createElement('div');
-                    row.className = 'item';
-                    row.innerHTML = `
-                        <span style="color:#636e72">${day.date}</span>
-                        <span>${day.week}</span>
-                        <span style="color:var(--primary); font-weight:bold">${day.type}</span>
-                        <span class="high-low">
-                            <span style="color:var(--danger)">${clean(day.high)}</span>
-                            <span style="color:#ccc; font-weight:normal">/</span>
-                            <span style="color:var(--primary)">${clean(day.low)}</span>
-                        </span>
-                        <span class="wind" style="color:#b2bec3; font-size:0.8rem; text-align:right">${day.fx}</span>
+            if (nowData.results && dailyData.results) {
+                const now = nowData.results[0].now;
+                const loc = nowData.results[0].location;
+                
+                // 更新当前
+                document.getElementById('city').innerText = loc.name;
+                document.getElementById('temp').innerText = now.temperature + '°';
+                document.getElementById('text').innerText = now.text;
+                document.getElementById('mainEmoji').innerText = getEmoji(now.code);
+                
+                // 更新预报
+                const forecastCont = document.getElementById('forecast');
+                forecastCont.innerHTML = '';
+                dailyData.results[0].daily.forEach((day, i) => {
+                    const label = ["今天", "明天", "后天"][i];
+                    forecastCont.innerHTML += `
+                        <div class="forecast-item">
+                            <span class="f-date">${label}</span>
+                            <div class="f-info">
+                                <span class="f-emoji">${getEmoji(day.code_day)}</span>
+                                <span>${day.text_day}</span>
+                            </div>
+                            <span class="f-temp">${day.low}° / ${day.high}°</span>
+                        </div>
                     `;
-                    list.appendChild(row);
                 });
-            } else {
-                alert("无效的代码: " + res.message);
+
+                updateTheme(now.text);
             }
-        } catch (err) {
-            alert("Worker 代理连接失败，请检查 URL");
-        } finally {
-            load.style.display = 'none';
-        }
+        } catch (e) { alert("数据获取失败，请检查私钥"); }
     }
 
-    // 初次加载
-    getWeather();
-</script>
+    function updateTheme(text) {
+        const b = document.getElementById('body');
+        b.className = '';
+        if (text.includes('晴')) b.classList.add('theme-sunny');
+        else if (text.includes('云') || text.includes('阴')) b.classList.add('theme-cloudy');
+        else if (text.includes('雨')) b.classList.add('theme-rain');
+        else b.classList.add('theme-default');
+    }
 
+    function changeCity() {
+        const input = document.getElementById('cityInput');
+        if (input.value) fetchWeather(input.value);
+    }
+
+    fetchWeather(DEFAULT_CITY);
+</script>
 </body>
 </html>
